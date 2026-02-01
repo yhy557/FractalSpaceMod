@@ -355,17 +355,47 @@ namespace FractalUzayModu
 
         private void UpdateScoreboard()
         {
-            if (homeScoreText != null)
-                homeScoreText.text = homeScore.ToString("000");
+            foreach (GameObject obj in placedObjects)
+            {
+                if (obj != null && obj.name.Contains("BuiltInScoreboard"))
+                {
+                    Transform homeText = obj.transform.Find("HomeScoreText");
+                    Transform awayText = obj.transform.Find("AwayScoreText");
 
-            if (awayScoreText != null)
-                awayScoreText.text = awayScore.ToString("000");
+                    if (homeText != null)
+                    {
+                        TextMesh tm = homeText.GetComponent<TextMesh>();
+                        if (tm != null) tm.text = homeScore.ToString("000");
+                    }
 
-            if (homeTeamLabel != null)
-                homeTeamLabel.text = homeTeamName;
+                    if (awayText != null)
+                    {
+                        TextMesh tm = awayText.GetComponent<TextMesh>();
+                        if (tm != null) tm.text = awayScore.ToString("000");
+                    }
 
-            if (awayTeamLabel != null)
-                awayTeamLabel.text = awayTeamName;
+                    for (int i = 0; i < obj.transform.childCount; i++)
+                    {
+                        Transform child = obj.transform.GetChild(i);
+                        if (child.name.StartsWith("Label_"))
+                        {
+                            TextMesh tm = child.GetComponent<TextMesh>();
+                            if (tm != null)
+                            {
+                                Vector3 pos = child.localPosition;
+                                if (pos.x < 0)
+                                {
+                                    tm.text = homeTeamName;
+                                }
+                                else
+                                {
+                                    tm.text = awayTeamName;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         private void CheckForBasket()
@@ -413,10 +443,24 @@ namespace FractalUzayModu
                             float horizontalDistance = Vector3.Distance(new Vector3(ballPos.x, hoopPos.y, ballPos.z), hoopPos);
                             float verticalDiff = ballPos.y - hoopPos.y;
 
+                            Rigidbody rbBall = ballObj.GetComponent<Rigidbody>();
+                            if (rbBall == null) continue;
+
+                            if (horizontalDistance < 1.2f && verticalDiff < 1.5f && verticalDiff > -0.5f)
+                            {
+                                Vector3 direction = hoopPos - ballPos;
+                                float distance = direction.magnitude;
+
+                                if (distance > 0.1f)
+                                {
+                                    float pullStrength = Mathf.Lerp(15f, 3f, distance / 1.2f);
+                                    rbBall.AddForce(direction.normalized * pullStrength, ForceMode.Force);
+                                }
+                            }
+
                             if (horizontalDistance < 0.45f && verticalDiff < 0.2f && verticalDiff > -1.5f)
                             {
-                                Rigidbody rbBall = ballObj.GetComponent<Rigidbody>();
-                                if (rbBall != null && rbBall.velocity.y < -0.3f)
+                                if (rbBall.velocity.y < -0.3f)
                                 {
                                     BasketMade(ballObj, hoopPos, isHomeHoop);
                                     basketCheckActive = false;
